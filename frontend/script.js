@@ -5,7 +5,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
 
 map.on('click', function () {
 
-    fetch("http://127.0.0.1:5000/risk/india")
+    fetch("http://10.161.239.180:5000/risk/india")
     .then(res => res.json())
     .then(data => {
         alert(`Country: ${data.country}\nRisk: ${data.risk}`);
