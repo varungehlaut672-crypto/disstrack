@@ -11,7 +11,7 @@ map.on('click', function () {
         alert(`Country: ${data.country}\nRisk: ${data.risk}`);
     })
     .catch(err => {
-        alert("Backend not connected yet!");
+        alert("Backend not connected!");
     });
 
 });
