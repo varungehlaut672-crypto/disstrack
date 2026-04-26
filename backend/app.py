@@ -1,7 +1,6 @@
-from flask_cors import CORS
 from flask import Flask, jsonify
+from flask_cors import CORS
 import pandas as pd
-
 
 app = Flask(__name__)
 CORS(app)
@@ -10,7 +9,8 @@ data = pd.read_csv("data/processed.csv")
 
 @app.route("/risk/<country>")
 def get_risk(country):
-    country = country.lower()
+    country = country.lower().replace(" ", "")
+
     row = data[data["country"] == country]
 
     if row.empty:
@@ -18,8 +18,9 @@ def get_risk(country):
 
     return jsonify({
         "country": country,
-        "risk": row.iloc[0]["risk"]
+        "earthquake_risk": row.iloc[0]["earthquake_risk"],
+        "flood_risk": row.iloc[0]["flood_risk"]
     })
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(debug=True)

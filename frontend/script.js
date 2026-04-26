@@ -1,25 +1,48 @@
-// CREATE MAP (this must be FIRST)
+// CREATE MAP
 var map = L.map('map').setView([20, 0], 2);
 
 // ADD TILE LAYER
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
 .addTo(map);
 
-// CLICK EVENT
-map.on('click', function () {
+// CLICK EVENT WITH COUNTRY DETECTION
+map.on('click', function (e) {
 
-    fetch("http://10.161.239.180:5000/risk/india")
+    let lat = e.latlng.lat;
+    let lon = e.latlng.lng;
+
+    // GET COUNTRY FROM LAT/LON
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
     .then(res => res.json())
-    .then(data => {
-        alert(`Country: ${data.country}\nRisk: ${data.risk}`);
+    .then(location => {
+
+        let country = location.address.country;
+
+        if (!country) {
+            document.getElementById("info").innerHTML = "Country not found";
+            return;
+        }
+
+        // normalize
+        country = country.toLowerCase().replace(/\s/g, "");
+
+        // CALL BACKEND
+        fetch(`http://127.0.0.1:5000/risk/${country}`)
+        .then(res => res.json())
+        .then(data => {
+
+            if (data.error) {
+                document.getElementById("info").innerHTML = `No data for ${country}`;
+            } else {
+                document.getElementById("info").innerHTML =
+                    `<b>Country:</b> ${data.country}<br>
+                     🌍 Earthquake: ${data.earthquake_risk}<br>
+                     🌊 Flood: ${data.flood_risk}`;
+            }
+
+        });
+
     })
-    .catch(err => {
-<<<<<<< HEAD
-        console.error(err);
-        alert("Backend not connected yet!");
-=======
-        alert("Backend not connected!");
->>>>>>> 22684c2bce550dd28ad6ae1dd0ff2ceb60a00223
-    });
+    .catch(err => console.error(err));
 
 });
