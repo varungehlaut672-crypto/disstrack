@@ -14,12 +14,10 @@ map.on('click', function () {
         alert(`Country: ${data.country}\nRisk: ${data.risk}`);
     })
     .catch(err => {
-<<<<<<< HEAD
         console.error(err);
         alert("Backend not connected yet!");
-=======
         alert("Backend not connected!");
->>>>>>> 22684c2bce550dd28ad6ae1dd0ff2ceb60a00223
     });
 
 });
+
