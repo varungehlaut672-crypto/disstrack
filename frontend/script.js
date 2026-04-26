@@ -43,6 +43,15 @@ map.on('click', function (e) {
         });
 
     })
+<<<<<<< HEAD
     .catch(err => console.error(err));
+=======
+    .catch(err => {
+        console.error(err);
+        alert("Backend not connected yet!");
+        alert("Backend not connected!");
+    });
+>>>>>>> aa34ca78cb2e331f1af8e426f18624dd5733a7ef
 
 });
+
