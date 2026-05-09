@@ -1,19 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Disaster Risk Map</title>
-
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-
-    <link rel="stylesheet" href="style.css">
+  <title>Disaster Globe</title>
+  <style>
+    body { margin: 0; }
+    #globeViz { width: 100vw; height: 100vh; }
+  </style>
 </head>
 
 <body>
 
-<h2 style="text-align:center;">🌍 Disaster Risk Intelligence Platform</h2>
+<div id="globeViz"></div>
 
-<div id="map"></div>
+<!-- INFO PANEL (optional but recommended) -->
 <div id="info" style="
 position:absolute;
 top:10px;
@@ -21,16 +20,26 @@ right:10px;
 background:white;
 padding:10px;
 border-radius:8px;
-box-shadow:0 0 10px rgba(0,0,0,0.2);
 z-index:1000;
 ">
 Click a country
 </div>
 
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
-<script src="https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json"></script>
+<!-- GRAPH CANVAS -->
+<canvas id="chart" style="
+position:absolute;
+bottom:10px;
+left:10px;
+width:400px;
+height:200px;
+background:white;
+border-radius:10px;
+padding:10px;
+"></canvas>
+
+<script src="https://unpkg.com/three"></script>
+<script src="https://unpkg.com/globe.gl"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="script.js"></script>
 
 </body>
