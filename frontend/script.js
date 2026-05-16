@@ -3,155 +3,294 @@ const globe = Globe()(document.getElementById('globeViz'))
   .globeImageUrl('https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg')
   .backgroundImageUrl('https://unpkg.com/three-globe/example/img/night-sky.png');
 
-// 🌍 CAMERA SETTINGS
+globe.renderer().setPixelRatio(window.devicePixelRatio);
+globe.controls().enableDamping = true;
+globe.controls().dampingFactor = 0.05;
 globe.pointOfView({ lat: 20, lng: 0, altitude: 2 });
+globe.controls().autoRotate = false;
 
-globe.controls().autoRotate = true;
-globe.controls().autoRotateSpeed = 0.5;
+let rotating = false;
 
-
-// 🌊 HURRICANE / CYCLONE POINTS
-globe.pointsData([
-  { lat: 15, lng: -60, size: 1, color: 'red' },
-  { lat: 20, lng: 90, size: 1, color: 'orange' },
-  { lat: -15, lng: 120, size: 1, color: 'yellow' }
-])
-.pointAltitude(0.02)
-.pointColor('color');
+document.getElementById("toggleRotate").onclick = () => {
+  rotating = !rotating;
+  globe.controls().autoRotate = rotating;
+};
 
 
-// 🌍 LOAD COUNTRY POLYGONS (for hover)
+let rotating = false;
+
+document.getElementById("toggleRotate").onclick = () => {
+  rotating = !rotating;
+  globe.controls().autoRotate = rotating;
+};
+
+// ===============================
+// 🌪 ANIMATED STORMS
+// ===============================
+function showRiskZones(lat, lng) {
+
+  let rings = [];
+
+  for (let i = 0; i < 3; i++) {
+    rings.push({
+      lat: lat,
+      lng: lng,
+      maxR: 5 + i * 3,
+      propagationSpeed: 2,
+      repeatPeriod: 2000
+    });
+  }
+
+  globe.ringsData(rings)
+    .ringColor(() => t => `rgba(255,0,0,${1-t})`)
+    .ringMaxRadius('maxR')
+    .ringPropagationSpeed('propagationSpeed')
+    .ringRepeatPeriod('repeatPeriod');
+}
+
+
+// ===============================
+// 🌍 LOAD COUNTRIES
+// ===============================
 let countries = [];
-let hoverD = null;
+let hovered = null;
 
 fetch("https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json")
 .then(res => res.json())
 .then(data => {
-    countries = data.features;
 
-    globe
-        .polygonsData(countries)
-        .polygonCapColor(d =>
-            d === hoverD
-                ? 'rgba(0,150,255,0.7)'   // 🔵 highlight
-                : 'rgba(255,255,255,0.05)'
-        )
-        .polygonSideColor(() => 'rgba(0,0,0,0)')
-        .polygonStrokeColor(() => '#111')
-        .polygonAltitude(0.01);
+  countries = data.features;
+
+  globe
+    .polygonsData(countries)
+    .polygonCapColor(feat =>
+      feat === hovered
+        ? 'rgba(255,255,0,0.35)' // 🟡 only hovered
+        : 'rgba(0,0,0,0)'        // transparent base
+    )
+    .polygonSideColor(() => 'rgba(0,0,0,0)')
+    .polygonStrokeColor(() => 'rgba(255,255,255,0.2)')
+    .polygonAltitude(0.01)
+    .polygonsTransitionDuration(150);
 });
 
 
-// 🖱 HOVER EFFECT
+// ===============================
+// 🖱 HOVER (SMOOTH FIX)
+// ===============================
 globe.onPolygonHover(d => {
-    hoverD = d;
+  if (hovered === d) return;
+  hovered = d;
 
-    globe.polygonCapColor(feat =>
-        feat === hoverD
-            ? 'rgba(0,150,255,0.7)'
-            : 'rgba(255,255,255,0.05)'
-    );
+  globe.polygonCapColor(feat =>
+    feat === hovered
+      ? 'rgba(255,255,0,0.35)'
+      : 'rgba(0,0,0,0)'
+  );
 });
 
 
-// 🖱 CLICK EVENT
-globe.onGlobeClick(({ lat, lng }) => {
+// ===============================
+// 🖱 CLICK COUNTRY
+// ===============================
+globe.onPolygonClick(d => {
 
-    console.log("Clicked:", lat, lng);
+  if (!d || !d.properties || !d.properties.name) return;
 
-    // 🌍 GET COUNTRY FROM LAT/LON
-    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
-    .then(res => res.json())
-    .then(location => {
+  let rawCountry = d.properties.name;
+  let displayName = rawCountry;
+  let country = rawCountry.toLowerCase().replace(/\s/g, "");
 
-        if (!location.address || !location.address.country) {
-            document.getElementById("info").innerHTML = "Country not found";
-            return;
-        }
+  // ===============================
+  // 🌍 ZOOM TO COUNTRY
+  // ===============================
+  const coords = d.geometry.coordinates[0][0];
 
-        let country = location.address.country
-            .toLowerCase()
-            .replace(/\s/g, "");
+  let lat = 0, lng = 0;
+  coords.forEach(c => {
+    lng += c[0];
+    lat += c[1];
+  });
 
-        console.log("Country:", country);
+  lat /= coords.length;
+  lng /= coords.length;
 
-        // 📦 FETCH RISK DATA
-        fetch(`http://127.0.0.1:5000/risk/${country}`)
-        .then(res => res.json())
-        .then(data => {
+  globe.pointOfView({ lat, lng, altitude: 0.8 }, 1000);
 
-            if (data.error) {
-                document.getElementById("info").innerHTML =
-                    `No data for ${country}`;
-            } else {
-                document.getElementById("info").innerHTML =
-                    `<b>${data.country}</b><br>
-                     🌍 Earthquake: ${data.earthquake_risk}<br>
-                     🌊 Flood: ${data.flood_risk}<br>
-                     🌪 Hurricane: ${data.hurricane_risk}<br>
-                     🌀 Cyclone: ${data.cyclone_risk}`;
-            }
 
-        });
+  // ===============================
+  // 🌪 SHOW RISK ZONES
+  // ===============================
+  showRiskZones(lat, lng);
 
-        // 📊 FETCH HISTORY → GRAPH
-        fetch(`http://127.0.0.1:5000/history/${country}`)
-        .then(res => res.json())
-        .then(history => {
 
-            if (!history || history.error) return;
+  // ===============================
+  // 🧭 SIDEBAR OPEN
+  // ===============================
+  const sidebar = document.getElementById("sidebar");
 
-            let years = history.map(item => item.year);
-            let counts = history.map(item => item.count);
+  sidebar.style.transform = "translateX(0)";
+  sidebar.innerHTML = `<h2>Loading ${displayName}...</h2>`;
 
-            const canvas = document.getElementById('chart');
-            if (!canvas) return;
 
-            const ctx = canvas.getContext('2d');
+  // ===============================
+  // 📦 FETCH RISK
+  // ===============================
+  fetch(`http://127.0.0.1:5000/risk/${country}`)
+  .then(res => res.json())
+  .then(data => {
 
-            // 🔁 Destroy old chart
-            if (window.myChart) {
-                window.myChart.destroy();
-            }
+    window.riskHTML = `
+      <div class="card">
+        🌋 Earthquake: ${data.earthquake_risk}<br>
+        🌊 Flood: ${data.flood_risk}<br>
+        🌪 Hurricane: ${data.hurricane_risk}<br>
+        🌀 Cyclone: ${data.cyclone_risk}
+      </div>
+    `;
 
-            // 📈 CREATE CHART
-            window.myChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: years,
-                    datasets: [{
-                        label: 'Earthquakes per Year',
-                        data: counts,
-                        borderColor: 'red',
-                        backgroundColor: 'rgba(255,0,0,0.2)',
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Year'
-                            }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: 'Count'
-                            }
-                        }
-                    }
-                }
-            });
+    showTab("risk");
+  });
 
-        });
 
-    })
-    .catch(err => {
-        console.error(err);
-        document.getElementById("info").innerHTML = "Error detecting country";
+  // ===============================
+  // 🤖 FETCH PREDICTION
+  // ===============================
+  fetch(`http://127.0.0.1:5000/predict/${country}`)
+  .then(res => res.json())
+  .then(pred => {
+
+    window.predHTML = `
+      <div class="card">
+        📅 ${pred.year}<br>
+        ⚡ ${pred.predicted_earthquakes} events
+      </div>
+    `;
+  });
+
+
+  // ===============================
+  // 📊 FETCH HISTORY
+  // ===============================
+  fetch(`http://127.0.0.1:5000/history/${country}`)
+  .then(res => res.json())
+  .then(history => {
+    window.historyData = history;
+  });
+
+
+  // ===============================
+  // 🧭 SIDEBAR UI
+  // ===============================
+  sidebar.innerHTML = `
+    <h2>${displayName}</h2>
+
+    <div>
+      <button onclick="showTab('risk')">Risk</button>
+      <button onclick="showTab('prediction')">Prediction</button>
+      <button onclick="showTab('history')">History</button>
+    </div>
+
+    <div id="tab-content"></div>
+  `;
+});
+
+  // ===============================
+  // 📊 GRAPH
+  // ===============================
+  fetch(`http://127.0.0.1:5000/history/${country}`)
+  .then(res => res.json())
+  .then(history => {
+
+    if (!history || history.error) return;
+
+    let years = history.map(h => h.year);
+    let counts = history.map(h => h.count);
+
+    const canvas = document.getElementById('chart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+
+    if (window.myChart) window.myChart.destroy();
+
+    window.myChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: years,
+        datasets: [{
+          label: 'Earthquakes',
+          data: counts,
+          borderColor: 'red',
+          backgroundColor: 'rgba(255,0,0,0.2)',
+          tension: 0.3
+        }]
+      }
     });
 
-});
+  });
+
+function showTab(tab) {
+
+  const box = document.getElementById("tab-content");
+
+  if (tab === "risk") {
+    box.innerHTML = window.riskHTML || "Loading...";
+  }
+
+  if (tab === "prediction") {
+    box.innerHTML = window.predHTML || "Loading...";
+  }
+
+  if (tab === "history") {
+    box.innerHTML = `<canvas id="chart"></canvas>`;
+    renderChart(window.historyData);
+  }
+}
+
+function renderChart(history) {
+
+  if (!history) return;
+
+  let years = history.map(h => h.year);
+  let counts = history.map(h => h.count);
+
+  const ctx = document.getElementById('chart').getContext('2d');
+
+  if (window.myChart) window.myChart.destroy();
+
+  window.myChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: [{
+        label: 'Disaster Trend',
+        data: counts,
+        borderColor: 'cyan',
+        backgroundColor: 'rgba(0,255,255,0.2)',
+        tension: 0.4
+      }]
+    }
+  });
+}
+
+function showRiskZones(lat, lng) {
+
+  let rings = [];
+
+  for (let i = 0; i < 3; i++) {
+    rings.push({
+      lat: lat,
+      lng: lng,
+      maxR: 5 + i * 3,
+      propagationSpeed: 2,
+      repeatPeriod: 2000
+    });
+  }
+
+  globe.ringsData(rings)
+    .ringColor(() => t => `rgba(255,0,0,${1-t})`)
+    .ringMaxRadius('maxR')
+    .ringPropagationSpeed('propagationSpeed')
+    .ringRepeatPeriod('repeatPeriod');
+}
